@@ -15,7 +15,7 @@ interface ProcessingOptions {
 // Kontekstin lisääminen chunkkeihin
 async function addContextToChunk(
   originalDocument: string,
-  chunk: Document
+  chunk: Document,
 ): Promise<Document> {
   const contextPrompt = `
 <document>
@@ -63,7 +63,7 @@ Please give a short succinct context to situate this chunk within the overall do
 // Pääfunktio dokumenttien prosessointiin
 export async function processDocumentsWithContext(
   documents: string[],
-  options: ProcessingOptions = {}
+  options: ProcessingOptions = {},
 ) {
   const { chunkSize = 1000, chunkOverlap = 200 } = options;
 
@@ -80,7 +80,7 @@ export async function processDocumentsWithContext(
 
     // 2. Lisää konteksti jokaiseen palaan
     const contextualChunks = await Promise.all(
-      chunks.map((chunk) => addContextToChunk(doc, chunk))
+      chunks.map((chunk) => addContextToChunk(doc, chunk)),
     );
 
     allContextualDocs.push(...contextualChunks);
@@ -89,7 +89,7 @@ export async function processDocumentsWithContext(
   // 3. Tallenna Supabaseen
   const client = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
   const embeddings = new OpenAIEmbeddings();
@@ -99,8 +99,8 @@ export async function processDocumentsWithContext(
     embeddings,
     {
       client,
-      tableName: "documents",
-    }
+      tableName: "contextual_rag",
+    },
   );
 
   return { vectorStore, documents: allContextualDocs };

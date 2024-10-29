@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     if (!Array.isArray(documents)) {
       return Response.json(
         { error: "Documents must be an array" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     console.error("Error processing documents:", error);
     return Response.json(
       { error: "Failed to process documents" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

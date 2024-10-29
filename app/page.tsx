@@ -13,7 +13,7 @@ export default function Chat() {
   const [file, setFile] = useState<File | null>(null);
 
   const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
