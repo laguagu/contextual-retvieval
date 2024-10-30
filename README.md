@@ -105,7 +105,7 @@ SUPABASE_SERVICE_ROLE_KEY=
      embedding vector(1536)
    );
 
-   -- Create an index for vector similarity search
+   -- An index is not necessary if you don't have much data; it can actually slow down your query time.
    create index on contextual_rag using ivfflat (embedding vector_cosine_ops)
    with (lists = 100);
 
