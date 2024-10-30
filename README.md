@@ -70,7 +70,7 @@ This project implements the core concepts from Anthropic's Contextual Retrieval 
 - **UI Components**: Shadcn
 - **Key Libraries**:
   - LangChain
-  - AI SDK
+  - Vercel AI SDK
 
 ## Setup
 
