@@ -113,35 +113,39 @@ SUPABASE_SERVICE_ROLE_KEY=
 
    -- Create the matching function for document retrieval
    CREATE OR REPLACE FUNCTION match_contextual_documents(
-     query_embedding vector(1536),
-     match_count int,
-     filter jsonb DEFAULT '{}'
+    query_embedding vector(1536),
+    match_count int,
+    filter jsonb DEFAULT '{}'
    )
    RETURNS TABLE (
-     id bigint,
-     content text,
-     metadata jsonb,
-     similarity float
+    id bigint,
+    content text,
+    metadata jsonb,
+    embedding vector(1536),
+    similarity float
    )
    LANGUAGE plpgsql
    AS $$
    BEGIN
-     RETURN QUERY
-     SELECT
-       contextual_rag.id,
-       contextual_rag.content,
-       contextual_rag.metadata,
-       1 - (contextual_rag.embedding <=> query_embedding) as similarity
-     FROM contextual_rag
-     WHERE
-       contextual_rag.embedding IS NOT NULL
-       AND CASE
-         WHEN filter::text != '{}'
-         THEN contextual_rag.metadata @> filter
-         ELSE TRUE
-       END
-     ORDER BY contextual_rag.embedding <=> query_embedding
-     LIMIT match_count;
+    RETURN QUERY
+    SELECT DISTINCT ON (contextual_rag.content)
+      contextual_rag.id,
+      contextual_rag.content,
+      contextual_rag.metadata,
+      contextual_rag.embedding,
+      1 - (contextual_rag.embedding <=> query_embedding) as similarity
+    FROM contextual_rag
+    WHERE contextual_rag.embedding IS NOT NULL
+      AND CASE
+        WHEN filter::text != '{}' THEN
+          contextual_rag.metadata @> filter
+        ELSE
+          TRUE
+      END
+    ORDER BY
+      contextual_rag.content,
+      (1 - (contextual_rag.embedding <=> query_embedding)) DESC
+    LIMIT match_count;
    END;
    $$;
    ```
