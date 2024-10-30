@@ -91,7 +91,62 @@ NEXT_PUBLIC_SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-4. Run development server:
+4. Set up Supabase database:
+
+   Execute the following SQL commands in your Supabase SQL editor to create the necessary table and functions:
+
+   ```sql
+   -- Enable the pgvector extension
+   create extension if not exists vector;
+
+   -- Create the main table for storing documents and embeddings
+   create table contextual_rag (
+     id bigserial primary key,
+     content text,
+     metadata jsonb,
+     embedding vector(1536)
+   );
+
+   -- Create an index for vector similarity search
+   create index on contextual_rag using ivfflat (embedding vector_cosine_ops)
+   with (lists = 100);
+
+   -- Create the matching function for document retrieval
+   CREATE OR REPLACE FUNCTION match_contextual_documents(
+     query_embedding vector(1536),
+     match_count int,
+     filter jsonb DEFAULT '{}'
+   )
+   RETURNS TABLE (
+     id bigint,
+     content text,
+     metadata jsonb,
+     similarity float
+   )
+   LANGUAGE plpgsql
+   AS $$
+   BEGIN
+     RETURN QUERY
+     SELECT
+       contextual_rag.id,
+       contextual_rag.content,
+       contextual_rag.metadata,
+       1 - (contextual_rag.embedding <=> query_embedding) as similarity
+     FROM contextual_rag
+     WHERE
+       contextual_rag.embedding IS NOT NULL
+       AND CASE
+         WHEN filter::text != '{}'
+         THEN contextual_rag.metadata @> filter
+         ELSE TRUE
+       END
+     ORDER BY contextual_rag.embedding <=> query_embedding
+     LIMIT match_count;
+   END;
+   $$;
+   ```
+
+5. Run development server:
 
 ```bash
 npm run dev
