@@ -19,14 +19,14 @@ async function addContextToChunk(
   chunk: Document,
 ): Promise<Document> {
   const contextPrompt = `
-<document>
-${originalDocument}
-</document>
-Here is the chunk we want to situate within the whole document
-<chunk>
-${chunk.pageContent}
-</chunk>
-Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.`;
+    <document>
+    ${originalDocument}
+    </document>
+    Here is the chunk we want to situate within the whole document
+    <chunk>
+    ${chunk.pageContent}
+    </chunk>
+    Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.`;
 
   try {
     const completion = await openai.chat.completions.create({

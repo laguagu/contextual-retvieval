@@ -63,7 +63,7 @@ This project implements the core concepts from Anthropic's Contextual Retrieval 
 ## Technical Stack
 
 - **Framework**: Next.js 15
-- **AI Models**: 
+- **AI Models**:
   - GPT-4o for context generation
   - OpenAI Embeddings (text-embedding-3-small, dimensions: 1536)
 - **Vector Database**: Supabase
@@ -102,6 +102,7 @@ npm run dev
 The system can be used through the chat interface that supports both text queries and PDF document uploads:
 
 1. **Upload Documents**:
+
    - Use the file input to upload PDF documents
    - Documents are automatically processed and stored in the vector database
 
@@ -114,6 +115,7 @@ The system can be used through the chat interface that supports both text querie
 Based on Anthropic's research findings, implementing reranking could further enhance retrieval accuracy:
 
 1. **Add Reranking Step**
+
    - According to the article, combining Contextual Retrieval with reranking reduced the retrieval failure rate by 67% (compared to 49% without reranking)
    - Implementation steps:
 
@@ -128,9 +130,16 @@ Based on Anthropic's research findings, implementing reranking could further enh
    - Balance between reranking more chunks for better accuracy vs. fewer chunks for lower latency
 
 2. **Performance Metrics**
+
    - Implement evaluation system to measure improvement from reranking
    - Track and compare retrieval failure rates
    - Monitor latency impact
+
+3. **Add Caching for Document Processing**
+   - Implement caching strategy for document processing and embeddings.
+   - Each chunk doesn't need separate document context for processing
+   - Caching the main document once reduces API costs significantly
+   - (https://www.anthropic.com/news/contextual-retrieval#:~:text=Using%20Prompt%20Caching%20to%20reduce%20the%20costs%20of%20Contextual%20Retrieval)
 
 For detailed information about reranking implementation, refer to the [original article](https://www.anthropic.com/news/contextual-retrieval#further-boosting-performance-with-reranking).
 
