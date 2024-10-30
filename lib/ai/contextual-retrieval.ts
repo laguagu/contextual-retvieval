@@ -1,18 +1,19 @@
-import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
-import { OpenAIEmbeddings } from "@langchain/openai";
 import { createClient } from "@supabase/supabase-js";
 import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenAI } from "openai";
+import { embeddings } from "./index";
 
-const openai = new OpenAI();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 interface ProcessingOptions {
   chunkSize?: number;
   chunkOverlap?: number;
+  metadata?: Record<string, string | number>;
 }
 
-// Kontekstin lisääminen chunkkeihin
 async function addContextToChunk(
   originalDocument: string,
   chunk: Document,
@@ -34,7 +35,7 @@ Please give a short succinct context to situate this chunk within the overall do
         {
           role: "system",
           content:
-            "Generate concise context for the chunk based on the document.",
+            "Generate concise context for the chunk based on the document. Respond in Finnish.",
         },
         {
           role: "user",
@@ -42,10 +43,10 @@ Please give a short succinct context to situate this chunk within the overall do
         },
       ],
       temperature: 0,
-      //   max_tokens: 150
     });
 
     const context = completion.choices[0].message.content;
+    console.log("Generated context:", context);
 
     return new Document({
       pageContent: `${context}\n\n${chunk.pageContent}`,
@@ -59,49 +60,85 @@ Please give a short succinct context to situate this chunk within the overall do
     return chunk;
   }
 }
-
-// Pääfunktio dokumenttien prosessointiin
 export async function processDocumentsWithContext(
   documents: string[],
   options: ProcessingOptions = {},
 ) {
-  const { chunkSize = 1000, chunkOverlap = 200 } = options;
+  try {
+    console.log("Processing documents with context:", documents);
+    console.log("Options:", options);
 
-  const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize,
-    chunkOverlap,
-  });
+    const { chunkSize = 1000, chunkOverlap = 200, metadata = {} } = options;
 
-  const allContextualDocs: Document[] = [];
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize,
+      chunkOverlap,
+    });
 
-  for (const doc of documents) {
-    // 1. Jaa dokumentti paloihin
-    const chunks = await splitter.createDocuments([doc]);
+    const allContextualDocs: Document[] = [];
 
-    // 2. Lisää konteksti jokaiseen palaan
-    const contextualChunks = await Promise.all(
-      chunks.map((chunk) => addContextToChunk(doc, chunk)),
+    for (const doc of documents) {
+      const chunks = await splitter.createDocuments([doc], [metadata]);
+      const contextualChunks = await Promise.all(
+        chunks.map((chunk) => addContextToChunk(doc, chunk)),
+      );
+      allContextualDocs.push(...contextualChunks);
+    }
+
+    console.log("Created contextual chunks. Processing embeddings...");
+
+    const client = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
-    allContextualDocs.push(...contextualChunks);
+    // Tallenna dokumentit ja embeddings suoraan tietokantaan
+    for (const doc of allContextualDocs) {
+      try {
+        // Luo embedding dokumentille
+        const docEmbedding = await embeddings.embedQuery(doc.pageContent);
+
+        // Tarkista embedding
+        console.log("Generated embedding length:", docEmbedding.length);
+
+        // Tallenna dokumentti ja embedding
+        const { error } = await client.from("contextual_rag").insert({
+          content: doc.pageContent,
+          metadata: doc.metadata,
+          embedding: docEmbedding,
+        });
+
+        if (error) {
+          console.error("Error inserting document:", error);
+          throw error;
+        }
+      } catch (error) {
+        console.error("Error processing document:", error);
+        throw error;
+      }
+    }
+
+    // Varmista että data on tallennettu oikein
+    const { data: sampleData, error: sampleError } = await client
+      .from("contextual_rag")
+      .select("id, content, embedding")
+      .limit(1);
+
+    if (sampleError) {
+      console.error("Error fetching sample data:", sampleError);
+    } else {
+      console.log(
+        "Sample data after insert:",
+        sampleData?.[0]?.id,
+        sampleData?.[0]?.content?.substring(0, 100),
+        "Embedding exists:",
+        !!sampleData?.[0]?.embedding,
+      );
+    }
+
+    return { documents: allContextualDocs };
+  } catch (error) {
+    console.error("Error in processDocumentsWithContext:", error);
+    throw error;
   }
-
-  // 3. Tallenna Supabaseen
-  const client = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-
-  const embeddings = new OpenAIEmbeddings();
-
-  const vectorStore = await SupabaseVectorStore.fromDocuments(
-    allContextualDocs,
-    embeddings,
-    {
-      client,
-      tableName: "contextual_rag",
-    },
-  );
-
-  return { vectorStore, documents: allContextualDocs };
 }

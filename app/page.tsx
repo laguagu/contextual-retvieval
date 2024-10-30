@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "@/hooks/use-toast";
 import { useChat } from "ai/react";
 import { useState } from "react";
 
 export default function Chat() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat();
-  const [file, setFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -18,28 +19,38 @@ export default function Chat() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setFile(file);
-    const text = await file.text();
+    setIsProcessing(true);
 
     try {
-      const response = await fetch("/api/process-docs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documents: [text],
-          options: {
-            chunkSize: 1000,
-            chunkOverlap: 200,
-          },
-        }),
-      });
+      if (file.type === "application/pdf") {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      if (!response.ok) throw new Error("Failed to process document");
+        const response = await fetch("/api/process-pdf", {
+          method: "POST",
+          body: formData,
+        });
 
-      const result = await response.json();
-      console.log("Document processed:", result);
+        if (!response.ok) {
+          throw new Error("Failed to process document");
+        }
+
+        const result = await response.json();
+        console.log("Processed document:", result);
+        toast({
+          title: "Document processed",
+          description: `Successfully processed ${file.name}`,
+        });
+      }
     } catch (error) {
-      console.error("Error processing document:", error);
+      console.error("Error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -55,9 +66,9 @@ export default function Chat() {
               }`}
             >
               <p className="font-semibold">
-                {message.role === "assistant" ? "Assistentti" : "Sinä"}:
+                {message.role === "assistant" ? "Assistant" : "You"}:
               </p>
-              <p className="mt-1">{message.content}</p>
+              <p className="mt-1 whitespace-pre-wrap">{message.content}</p>
             </div>
           ))}
         </ScrollArea>
@@ -67,20 +78,26 @@ export default function Chat() {
         <Input
           type="file"
           onChange={handleFileUpload}
-          accept=".txt,.md,.pdf"
+          accept=".pdf"
           className="flex-1"
+          disabled={isProcessing}
         />
+        {isProcessing && (
+          <div className="text-sm text-muted-foreground">
+            Processing file...
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           value={input}
           onChange={handleInputChange}
-          placeholder="Kysy mitä vain..."
+          placeholder="Ask anything..."
           className="flex-1"
         />
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Lähetetään..." : "Lähetä"}
+        <Button type="submit" disabled={isLoading || isProcessing}>
+          {isLoading ? "Sending..." : "Send"}
         </Button>
       </form>
     </div>
