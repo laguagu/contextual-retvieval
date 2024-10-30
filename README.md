@@ -67,12 +67,10 @@ This project implements the core concepts from Anthropic's Contextual Retrieval 
   - GPT-4o for context generation
   - OpenAI Embeddings (text-embedding-3-small, dimensions: 1536)
 - **Vector Database**: Supabase
-- **UI Components**: Custom components built with Radix UI
+- **UI Components**: Shadcn
 - **Key Libraries**:
   - LangChain
   - AI SDK
-  - Supabase Client
-  - pdf-parse for PDF processing
 
 ## Setup
 
