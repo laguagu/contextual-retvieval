@@ -99,6 +99,29 @@ The system can be used through the chat interface that supports both text querie
    - Ask questions about the uploaded documents
    - Receive AI-enhanced responses using the contextual retrieval system
 
+## TODO: Future Improvements
+
+Based on Anthropic's research findings, implementing reranking could further enhance retrieval accuracy:
+
+1. **Add Reranking Step**
+   - According to the article, combining Contextual Retrieval with reranking reduced the retrieval failure rate by 67% (compared to 49% without reranking)
+   - Implementation steps:
+     ```typescript
+     // 1. Perform initial retrieval to get top-N chunks (e.g., top 150)
+     // 2. Pass chunks and query through a reranking model
+     // 3. Score and select top-K chunks (e.g., top 20)
+     // 4. Use these chunks for the final response generation
+     ```
+   - Consider using Cohere's reranker or similar solutions
+   - Balance between reranking more chunks for better accuracy vs. fewer chunks for lower latency
+
+2. **Performance Metrics**
+   - Implement evaluation system to measure improvement from reranking
+   - Track and compare retrieval failure rates
+   - Monitor latency impact
+
+For detailed information about reranking implementation, refer to the [original article](https://www.anthropic.com/news/contextual-retrieval#further-boosting-performance-with-reranking).
+
 ## References
 
 This implementation is based on the research and methodology presented in [Anthropic's Contextual Retrieval article](https://www.anthropic.com/news/contextual-retrieval). For a detailed understanding of the underlying concepts and methodology, please refer to the original article.
